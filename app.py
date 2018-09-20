@@ -6,6 +6,16 @@ from passlib.hash import sha256_crypt
 
 app = Flask(__name__)
 
+# Configuring MySQL
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = 'NewPassword'
+app.config['MYSQL_DB'] = 'python_flask_app'
+app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+
+# Initializing MySQL
+mysql = MySQL(app)
+
 Articles = Articles()
 
 @app.route('/')
@@ -38,8 +48,28 @@ class RegisterForm(Form):
 def register():
     form = RegisterForm(request.form)
     if request.method == 'POST' and form.validate():
-        return 
+        name = form.name.data
+        email = form.email.data
+        username = form.username.data
+        password = sha256_crypt.encrypt(str(form.password.data))
+
+        # Create cursor 
+        cur = mysql.connection.cursor()
+
+        # Execute query
+        cur.execute("INSERT INTO users(name, email, username, password) VALUES(%s, %s, %s, %s)", (name, email, username, password))
+
+        # Commit to database
+        mysql.connection.commit()
+
+        # Close the connection
+        cur.close()
+
+        flash('You are now registered and can log in!', 'Success')
+
+        return redirect(url_for('login'))
     return render_template('register.html', form = form)
 
 if __name__ == '__main__':
+    app.secret_key = 'some_secret'
     app.run(debug = True)
